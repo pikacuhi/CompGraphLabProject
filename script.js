@@ -40,6 +40,7 @@ function init() {
     scene.add(pointLight);
 
     spotlight = new THREE.SpotLight(0xFFFFFF, 1, 500);
+    spotlight.position.set(400, (320 + 6), 0);//hjrsny ambil value dari space ship(x, y+6, 0)
     spotlight.castShadow = true;
     scene.add(spotlight);
 
@@ -101,15 +102,16 @@ function init() {
 
     // Spaceship
     const gltfLoader = new GLTFLoader();
-    gltfLoader.load('assets/model/spaceship', (gltf) => {
+    gltfLoader.load("assets/model/spaceship", function(gltf) {
         spaceship = gltf.scene;
+        console.log("works");
         spaceship.position.set(100, 320, 50);
         spaceship.scale.set(10, 10, 10);
         spaceship.castShadow = true;
         spaceship.receiveShadow = true;
         scene.add(spaceship);
 
-        spotlight.target = spaceship;
+        spotlight.target = spaceship;//blm bs d cek gegara gltfny error gtw knp zz
     });
 
     // Raycaster
