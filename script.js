@@ -3,7 +3,11 @@ import { OrbitControls } from './threejs/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from './threejs/examples/jsm/loaders/GLTFLoader.js';
 
 let scene, renderer, freeCamera, thirdPersonCamera, controls, sun, planets = [];
-let spaceship, spotlight, raycaster, mouse, selectedObject, hoveredObject, textLabel, onFreeCamera;
+let spaceship, spotlight, raycaster, mouse, hoveredObject, textLabel;
+
+let shiftPressed = false;
+
+
 
 // Data planet
 const planetData = [
@@ -202,6 +206,20 @@ window.addEventListener('keyup', (e) => {
     if (e.key == 'd') keys.d = false;
 });
 
+let usingThirdPerson = false; 
+//cek shift
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Shift') shiftPressed = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.key === 'Shift') {
+        shiftPressed = false;
+        usingThirdPerson = !usingThirdPerson; // Ganti kamera
+    }
+});
+
+
 let x = false;
 
 const colorsList = ['#00FFFF', '#00FF00', '#FFCC00', '#E6E6FA', '#FF69B4', '#EE82EE',
@@ -221,77 +239,79 @@ function worldToScreen(worldPosition) {
 
 
 let time = 0.01;
+
 function animate() {
     requestAnimationFrame(animate);
 
-    // Update Raycaster
-    raycaster.setFromCamera(mouse, freeCamera);
+    // Update Raycaster untuk interaksi
+    raycaster.setFromCamera(mouse, usingThirdPerson ? thirdPersonCamera : freeCamera);
     const intersects = raycaster.intersectObjects(planets);
-    if (intersects.length > 0 && x == false) {
+
+    // Logika interaksi dengan planet
+    if (intersects.length > 0 && !x) {
         x = true;
         let isPlanet = planets.findIndex(obj => obj.name == intersects[0].object.name.trim());
 
-        if (isPlanet != null){
+        if (isPlanet !== -1) {
             hoveredObject = intersects[0].object;
-            hoveredObject.material.color.set(colorsList[Math.floor(Math.random() * colorsList.length)]); // Ubah warna
+            hoveredObject.material.color.set(colorsList[Math.floor(Math.random() * colorsList.length)]);
             textLabel.innerText = hoveredObject.name;
+
             let pos = worldToScreen(hoveredObject.position);
-            textLabel.style.color = hoveredObject.material.color;
-            textLabel.style.backgroundColor = 'transparent';
             textLabel.style.left = `${pos.x}px`;
             textLabel.style.top = `${pos.y}px`;
             textLabel.style.display = 'block';
         }
-
-    } else if (intersects.length <= 0 && x){
+    } else if (x && intersects.length === 0) {
         x = false;
-        hoveredObject.material.color.set(0xFFFFFF);
-        hoveredObject = null;
+        if (hoveredObject) {
+            hoveredObject.material.color.set(0xFFFFFF);
+            hoveredObject = null;
+        }
         textLabel.style.display = 'none';
     }
 
-    controls.zoomSpeed = 0.5;
-    controls.speed = 0.1;
-    controls.update();
-
-
-    for (let i = 0; i < planets.length; i++){
-        
-        if (i % 2 == 0){
-            pivots[i].rotation.y += time * planetData[i].rotateSpeed * revolveMultiplier;
-        }else{
-            pivots[i].rotation.y -= time * planetData[i].rotateSpeed * revolveMultiplier;
+    // Update posisi kamera
+    if (spaceship) {
+        if (usingThirdPerson) {
+            const offset = new THREE.Vector3(-5, 90, 16).applyQuaternion(spaceship.quaternion);
+            thirdPersonCamera.position.copy(spaceship.position.clone().add(offset));
+            thirdPersonCamera.lookAt(spaceship.position);
+        } else {
+            controls.update(); // Hanya update kontrol saat kamera free digunakan
         }
-        
+
+        // Update posisi spaceship
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(spaceship.quaternion).normalize();
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(spaceship.quaternion).normalize();
+        targetVelocity.set(0, 0, 0);
+
+        if (keys.w) targetVelocity.add(forward.clone().multiplyScalar(speed)); // Move forward
+        if (keys.s) targetVelocity.add(forward.clone().multiplyScalar(-speed)); // Move backward
+        if (keys.a) targetVelocity.add(right.clone().multiplyScalar(-speed)); // Move left
+        if (keys.d) targetVelocity.add(right.clone().multiplyScalar(speed)); // Move right
+
+        velocity.lerp(targetVelocity, smoothness);
+        spaceship.position.add(velocity);
+
+        // Update spotlight mengikuti spaceship
+        spotlight.position.set(
+            spaceship.position.x,
+            spaceship.position.y + 6,
+            spaceship.position.z
+        );
+        spotlight.target.position.copy(spaceship.position);
     }
 
-    //Mungkin kodingan ini bisa dipake buat spaceship
+    // Update rotasi planet
+    for (let i = 0; i < planets.length; i++) {
+        pivots[i].rotation.y += time * planetData[i].rotateSpeed * revolveMultiplier;
+    }
 
-    // const up = new THREE.Vector3();
-    // freeCamera.getWorldDirection(up);
-    // up.normalize();
-
-
-    // const right = new THREE.Vector3(1, 0, 0).normalize();
-    // //right.crossVectors(up, new THREE.Vector3(0, 1, 0)).normalize(); // Perpendicular to forward
-
-    // // Update target velocity based on keys
-    // targetVelocity.set(0, 0, 0);
-    // if (keys.w) targetVelocity.add(up.clone().multiplyScalar(speed)); // Move forward
-    // if (keys.s) targetVelocity.add(up.clone().multiplyScalar(-speed)); // Move backward
-    // if (keys.a) targetVelocity.add(right.clone().multiplyScalar(-speed)); // Move left
-    // if (keys.d) targetVelocity.add(right.clone().multiplyScalar(speed)); // Move right
-
-    // // Smooth interpolation for velocity to avoid "snappy" movement
-    // velocity.lerp(targetVelocity, smoothness);
-
-    // // Update camera position
-    // freeCamera.position.add(velocity);
-
-
-
-    renderer.render(scene, freeCamera);
+    // Render scene menggunakan kamera aktif
+    renderer.render(scene, usingThirdPerson ? thirdPersonCamera : freeCamera);
 }
+
 
 window.onload = function () {
     init();
