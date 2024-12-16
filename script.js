@@ -4,15 +4,16 @@ import { GLTFLoader } from './threejs/examples/jsm/loaders/GLTFLoader.js';
 
 let scene, renderer, freeCamera, thirdPersonCamera, controls, sun, planets = [];
 let spaceship, spotlight, raycaster, mouse, hoveredObject, textLabel;
+let satellite;
 
 let shiftPressed = false;
-
+//press shift untuk ubah ke pesawat
 
 
 // Data planet
 const planetData = [
-    { name: "Mercury", radius: 3.2, texture: 'assets/textures/mercury.jpg', spinRadius : 320, rotateSpeed: 0.2 },
     { name: "Venus", radius: 4.8, texture: 'assets/textures/venus.jpg', spinRadius : 360, rotateSpeed: 0.15  },
+    { name: "Mercury", radius: 3.2, texture: 'assets/textures/mercury.jpg', spinRadius : 320, rotateSpeed: 0.2 },
     { name: "Earth", radius: 4.8, texture: 'assets/textures/earth.jpg', spinRadius : 400, rotateSpeed: 0.10 },
     { name: "Mars", radius: 4, texture: 'assets/textures/mars.jpg', spinRadius : 465, rotateSpeed: 0.05 },
     { name: "Jupiter", radius: 13, texture: 'assets/textures/jupiter.jpg', spinRadius : 510, rotateSpeed: 0.025  },
@@ -20,6 +21,7 @@ const planetData = [
     { name: "Uranus", radius: 8,  texture: 'assets/textures/uranus.jpg', spinRadius : 615, rotateSpeed: 0.005  },
     { name: "Neptune", radius: 6,  texture: 'assets/textures/neptune.jpg', spinRadius : 655, rotateSpeed: 0.001  },
 ];
+
 
 let pivots = [];
 
@@ -81,6 +83,14 @@ function init() {
         pivots.push(obj);
     }
 
+    const satelliteGeometry = new THREE.CylinderGeometry(1, 0.5, 0.4, 8);
+    const satelliteMaterial = new THREE.MeshStandardMaterial({
+        color: 0xCCCCCC,
+        metalness: 0.5,
+        roughness: 0.5
+    });
+    
+
     let index = 0;
 
     // Planets
@@ -132,6 +142,8 @@ function init() {
             planet.add(ring);
         }
     });
+
+    
 
     const gltfLoader = new GLTFLoader();
     gltfLoader.load("./assets/model/spaceship/scene.gltf", function(gltf) {
@@ -245,14 +257,16 @@ function animate() {
 
     // Update Raycaster untuk interaksi
     raycaster.setFromCamera(mouse, usingThirdPerson ? thirdPersonCamera : freeCamera);
-    const intersects = raycaster.intersectObjects(planets);
+    // const intersects = raycaster.intersectObjects(planets);
+    const intersects = raycaster.intersectObjects(planets.concat([sun])); 
 
     // Logika interaksi dengan planet
     if (intersects.length > 0 && !x) {
         x = true;
-        let isPlanet = planets.findIndex(obj => obj.name == intersects[0].object.name.trim());
+        // let isPlanet = planets.findIndex(obj => obj.name == intersects[0].object.name.trim());
+        let isPlanetOrSun = planets.findIndex(obj => obj.name == intersects[0].object.name.trim());
 
-        if (isPlanet !== -1) {
+        if (isPlanetOrSun !== -1 || intersects[0].object === sun) {
             hoveredObject = intersects[0].object;
             hoveredObject.material.color.set(colorsList[Math.floor(Math.random() * colorsList.length)]);
             textLabel.innerText = hoveredObject.name;
