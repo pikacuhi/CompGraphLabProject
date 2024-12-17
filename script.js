@@ -14,8 +14,8 @@ const planetData = [
     { name: "Mars", radius: 4, texture: 'assets/textures/mars.jpg', spinRadius : 465, rotateSpeed: 0.05 },
     { name: "Jupiter", radius: 13, texture: 'assets/textures/jupiter.jpg', spinRadius : 510, rotateSpeed: 0.025  },
     { name: "Saturn", radius: 10,  texture: 'assets/textures/saturn.jpg', spinRadius : 560, rotateSpeed: 0.015  },
-    { name: "Uranus", radius: 8,  texture: 'assets/textures/uranus.jpg', spinRadius : 615, rotateSpeed: 0.005  },
-    { name: "Neptune", radius: 6,  texture: 'assets/textures/neptune.jpg', spinRadius : 655, rotateSpeed: 0.001  },
+    { name: "Uranus", radius: 8,  texture: 'assets/textures/uranus.jpg', spinRadius : 615, rotateSpeed: 0.01  },
+    { name: "Neptune", radius: 6,  texture: 'assets/textures/neptune.jpg', spinRadius : 655, rotateSpeed: 0.005  },
 ];
 
 
@@ -153,7 +153,7 @@ function init() {
     gltfLoader.load("./assets/model/spaceship/scene.gltf", function(gltf) {
         spaceship = gltf.scene;
         spaceship.position.set(100, 320, 50);
-        spaceship.scale.set(1, 1, 1);
+        spaceship.scale.set(0.3, 0.3, 0.3);
         spaceship.castShadow = true;
         spaceship.receiveShadow = true;
         scene.add(spaceship);
@@ -254,13 +254,8 @@ window.addEventListener('keyup', (e) => {
 });
 
 let usingThirdPerson = false; 
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Shift') shiftPressed = true;
-});
-
 window.addEventListener('keyup', (e) => {
     if (e.key === 'Shift') {
-        shiftPressed = false;
         usingThirdPerson = !usingThirdPerson; 
     }
 });
@@ -328,8 +323,8 @@ function animate() {
             controls.update(); 
         }
 
-        if (keys.up) spaceship.rotation.x += rotationSpeed; 
-        if (keys.down) spaceship.rotation.x -= rotationSpeed; 
+        controls.zoomSpeed = 0.25;
+
         if (keys.left) spaceship.rotation.y += rotationSpeed; 
         if (keys.right) spaceship.rotation.y -= rotationSpeed; 
 
