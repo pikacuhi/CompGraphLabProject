@@ -2,7 +2,7 @@ import * as THREE from './threejs/build/three.module.js';
 import { OrbitControls } from './threejs/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from './threejs/examples/jsm/loaders/GLTFLoader.js';
 
-let scene, renderer, freeCamera, thirdPersonCamera, controls, sun, planets = [];
+let scene, renderer, freeCamera, thirdPersonCamera, controls, sun, planets = [], spaceObjects = [];
 let spaceship, spotlight, raycaster, mouse, hoveredObject, textLabel;
 let satellite;
 
@@ -75,6 +75,7 @@ function init() {
     sun.name = 'Sun'
     sun.position.set(640, 320, 0);
     scene.add(sun);
+    spaceObjects.push(sun);
 
     for (let i = 0; i < 8; i++){
         const obj = new THREE.Object3D();
@@ -105,6 +106,7 @@ function init() {
         planet.receiveShadow = true;
         planet.name = data.name;
         planets.push(planet);
+        spaceObjects.push(planet);
         pivots[index].add(planet);
         index++;
 
@@ -177,18 +179,37 @@ function onMouseMove(event) {
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 }
 
-let revolveMultiplier = 1;
+let revolveMultiplier = 1, rotateMultiplier = 24;
 
 function onMouseClick() {
 
-    
     if (hoveredObject) {
-        let idx = planets.findIndex(obj => obj.name == hoveredObject.name.trim());
-        let orgRotate = planetData[idx].rotateSpeed;
-        planetData[idx].rotateSpeed += 0.15;
-        setTimeout(() => {
-            planetData[idx].rotateSpeed = orgRotate; 
-        }, 2000);
+
+        if (hoveredObject.name.trim() === "Sun") {
+    
+          revolveMultiplier = 8;
+    
+          setTimeout(() => {
+    
+            revolveMultiplier = 1;
+    
+          }, 2000);
+    
+        } else {
+    
+          let idx = planets.findIndex(
+    
+            (obj) => obj.name == hoveredObject.name.trim()
+    
+          );
+    
+          let orgRotate = planetData[idx].rotateSpeed;
+          planetData[idx].rotateSpeed += 0.4;
+          setTimeout(() => {
+            planetData[idx].rotateSpeed = orgRotate;
+    
+          }, 2000);
+        }
     }
 }
 
@@ -258,39 +279,46 @@ function animate() {
     // Update Raycaster untuk interaksi
     raycaster.setFromCamera(mouse, usingThirdPerson ? thirdPersonCamera : freeCamera);
     // const intersects = raycaster.intersectObjects(planets);
-    const intersects = raycaster.intersectObjects(planets.concat([sun])); 
+    const intersects = raycaster.intersectObjects(spaceObjects); 
 
     // Logika interaksi dengan planet
     if (intersects.length > 0 && !x) {
         x = true;
         // let isPlanet = planets.findIndex(obj => obj.name == intersects[0].object.name.trim());
-        let isPlanetOrSun = planets.findIndex(obj => obj.name == intersects[0].object.name.trim());
+        let isPlanet = spaceObjects.findIndex(
 
-        if (isPlanetOrSun !== -1 || intersects[0].object === sun) {
+            (obj) => obj.name == intersects[0].object.name.trim()
+      
+          );
+      
+          if (isPlanet != null) {
             hoveredObject = intersects[0].object;
-            hoveredObject.material.color.set(colorsList[Math.floor(Math.random() * colorsList.length)]);
+            hoveredObject.material.color.set(
+              colorsList[Math.floor(Math.random() * colorsList.length)]
+            ); // Ubah warna
             textLabel.innerText = hoveredObject.name;
-
             let pos = worldToScreen(hoveredObject.position);
+            textLabel.style.color = hoveredObject.material.color;
+            textLabel.style.backgroundColor = "transparent";
             textLabel.style.left = `${pos.x}px`;
             textLabel.style.top = `${pos.y}px`;
-            textLabel.style.display = 'block';
+            textLabel.style.display = "block";
+          }
+      
+        } else if (intersects.length <= 0 && x) {
+          x = false;
+          hoveredObject.material.color.set(0xffffff);
+          hoveredObject = null;
+          textLabel.style.display = "none";
         }
-    } else if (x && intersects.length === 0) {
-        x = false;
-        if (hoveredObject) {
-            hoveredObject.material.color.set(0xFFFFFF);
-            hoveredObject = null;
-        }
-        textLabel.style.display = 'none';
-    }
+        
 
     // Update posisi kamera
     if (spaceship) {
         if (usingThirdPerson) {
-            const offset = new THREE.Vector3(-5, 90, 16).applyQuaternion(spaceship.quaternion);
+            const offset = new THREE.Vector3(-5, 90, 50).applyQuaternion(spaceship.quaternion);
             thirdPersonCamera.position.copy(spaceship.position.clone().add(offset));
-            thirdPersonCamera.lookAt(spaceship.position);
+            thirdPersonCamera.lookAt(spaceship.position.clone().add(new THREE.Vector3(0, 30,30)));
         } else {
             controls.update(); // Hanya update kontrol saat kamera free digunakan
         }
@@ -320,7 +348,12 @@ function animate() {
     // Update rotasi planet
     for (let i = 0; i < planets.length; i++) {
         pivots[i].rotation.y += time * planetData[i].rotateSpeed * revolveMultiplier;
+
+        planets[i].rotation.y +=
+            time * planetData[i].rotateSpeed * revolveMultiplier * rotateMultiplier;
     }
+
+    
 
     // Render scene menggunakan kamera aktif
     renderer.render(scene, usingThirdPerson ? thirdPersonCamera : freeCamera);
